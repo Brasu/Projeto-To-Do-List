@@ -8,32 +8,28 @@
             showModal: false,
             addError: '',
             confirmDeleteId: null,
-            confirmCompleteId: null,
         };
 
         // ---------- storage helpers ----------
-        async function getOrNull(key, shared) {
+        function getOrNull(key, shared) {
             try {
-                const r = await window.storage.get(key, shared);
-                return r ? JSON.parse(r.value) : null;
+                const r =  localStorage.getItem(key);
+                return r ? JSON.parse(r) : null;
             } catch (e) {
                 return null;
             }
         }
-        async function set(key, value, shared) {
+        function set(key, value, shared) {
             try {
-                await window.storage?.set(key, JSON.stringify(value), shared);
+                localStorage.setItem(key, JSON.stringify(value));
             } catch (e) { console.error('storage set failed', e); }
         }
 
-        async function init() {
-            let tasks = await getOrNull('tasks', true);
+        function init() {
+            let tasks = getOrNull('tasks', true);
             if (!tasks) {
-                tasks = [
-                    { id: cryptoId(), title: 'Repor estoque de pão', time: '', completed: false, order: 0 },
-                    { id: cryptoId(), title: 'Conferir pedidos do dia', time: '', completed: false, order: 1 },
-                ];
-                await set('tasks', tasks, true);
+                tasks = [ ];
+                 set('tasks', tasks, true);
             }
             state.tasks = tasks.sort((a, b) => a.order - b.order);
             state.loading = false;
@@ -60,7 +56,6 @@
         const icoPlus = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
         const icoCheck = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
         const icoAlert = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>`;
-        const icoCheckCircle = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>`;
 
         // ---------- render ----------
         function render() {
@@ -119,7 +114,6 @@
         <div class="toast" id="toast"></div>
         ${state.showModal ? modalHtml() : ''}
         ${state.confirmDeleteId ? confirmDeleteHtml() : ''}
-        ${state.confirmCompleteId ? confirmCompleteHtml() : ''}
       </div>
     `;
 
@@ -148,9 +142,6 @@
     if(state.confirmDeleteId){
       wireConfirmDelete();
     }
-    if(state.confirmCompleteId){
-      wireConfirmComplete();
-    }
   }
 
   function taskCardHtml(t){
@@ -174,36 +165,23 @@
     return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  async function persistTasks(){
-    await set('tasks', state.tasks, true);
+  function persistTasks(){
+    set('tasks', state.tasks, true);
   }
 
   function onCheckboxClick(id){
     const t = state.tasks.find(x=>x.id===id);
     if(!t) return;
     if(t.completed){
-      // desmarcar não precisa de confirmação
       t.completed = false;
       t.time = '';
-      persistTasks();
-      render();
-      return;
+    } else {
+      t.completed = true;
+      const hora = new Date();
+      t.time = hora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
-    // concluir precisa de confirmação
-    state.confirmCompleteId = id;
-    render();
-  }
-
-  function completeTask(id){
-    const t = state.tasks.find(x=>x.id===id);
-    if(!t) return;
-    t.completed = true;
-    const hora = new Date();
-    t.time = hora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    state.confirmCompleteId = null;
     persistTasks();
     render();
-    showToast('Tarefa concluída');
   }
 
   function deleteTask(id){
@@ -359,7 +337,7 @@
     newTitle.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
   }
 
-  async function addTask(){
+  function addTask(){
     if(state.tasks.length >= MAX_TASKS){
       state.addError = `Limite de ${MAX_TASKS} tarefas atingido.`;
       render();
@@ -378,7 +356,7 @@
     });
     state.showModal = false;
     state.addError = '';
-    await persistTasks();
+    persistTasks();
     render();
     showToast('Tarefa adicionada');
   }
@@ -408,33 +386,6 @@
     });
     document.getElementById('btnCancelDelete').onclick = ()=>{ state.confirmDeleteId=null; render(); };
     document.getElementById('btnConfirmDelete').onclick = ()=> deleteTask(state.confirmDeleteId);
-  }
-
-  // ---------- complete confirmation modal ----------
-  function confirmCompleteHtml(){
-    const t = state.tasks.find(x=>x.id===state.confirmCompleteId);
-    const title = t ? escapeHtml(t.title) : 'esta tarefa';
-    return `
-      <div class="modal-overlay" id="confirmCompleteOverlay">
-        <div class="modal-sheet confirm-sheet">
-          <div class="confirm-icon success">${icoCheckCircle}</div>
-          <h3 class="modal-title" style="text-align:center;">Concluir tarefa?</h3>
-          <p class="confirm-text">Marcar "<b>${title}</b>" como concluída?</p>
-          <div class="modal-actions">
-            <button class="btn-secondary" id="btnCancelComplete">Cancelar</button>
-            <button class="btn-success" id="btnConfirmComplete">Concluir</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function wireConfirmComplete(){
-    document.getElementById('confirmCompleteOverlay').addEventListener('click', (e)=>{
-      if(e.target.id === 'confirmCompleteOverlay'){ state.confirmCompleteId=null; render(); }
-    });
-    document.getElementById('btnCancelComplete').onclick = ()=>{ state.confirmCompleteId=null; render(); };
-    document.getElementById('btnConfirmComplete').onclick = ()=> completeTask(state.confirmCompleteId);
   }
 
   init();
