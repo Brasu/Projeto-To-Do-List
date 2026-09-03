@@ -1,14 +1,14 @@
 (function() {
         const app = document.getElementById('app');
+        const MAX_TASKS = 10;
+
         let state = {
-            screen: 'tasks', // 'login' | 'register' | 'tasks'
-            currentUser: null,
-            users: null,
             tasks: null,
             loading: true,
-            loginError: '',
-            regError: '',
             showModal: false,
+            addError: '',
+            confirmDeleteId: null,
+            confirmCompleteId: null,
         };
 
         // ---------- storage helpers ----------
@@ -27,11 +27,6 @@
         }
 
         async function init() {
-            let users = await getOrNull('users', true);
-            if (!users) {
-                users = [{ username: 'joao', password: '1234', name: 'João' }];
-                await set('users', users, true);
-            }
             let tasks = await getOrNull('tasks', true);
             if (!tasks) {
                 tasks = [
@@ -40,7 +35,6 @@
                 ];
                 await set('tasks', tasks, true);
             }
-            state.users = users;
             state.tasks = tasks.sort((a, b) => a.order - b.order);
             state.loading = false;
             render();
@@ -62,11 +56,11 @@
 
         // ---------- icons ----------
         const icoList = `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h9"/><circle cx="4" cy="6" r="1.4" fill="#fff" stroke="none"/><circle cx="4" cy="12" r="1.4" fill="#fff" stroke="none"/><path d="M3.2 17.5l1 1.4 2-2.4" /></svg>`;
-        const icoLogout = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M15 16l4-4-4-4"/><path d="M19 12H9"/></svg>`;
         const icoTrash = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>`;
-        const icoGrip = `<svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor"><circle cx="5" cy="4" r="1.6"/><circle cx="11" cy="4" r="1.6"/><circle cx="5" cy="10" r="1.6"/><circle cx="11" cy="10" r="1.6"/><circle cx="5" cy="16" r="1.6"/><circle cx="11" cy="16" r="1.6"/></svg>`;
         const icoPlus = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
         const icoCheck = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
+        const icoAlert = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"/></svg>`;
+        const icoCheckCircle = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>`;
 
         // ---------- render ----------
         function render() {
@@ -74,117 +68,14 @@
                 app.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;">Carregando…</div>`;
                 return;
             }
-            if (state.screen === 'login') return renderLogin();
-            if (state.screen === 'register') return renderRegister();
-            if (state.screen === 'tasks') return renderTasks();
-        }
-
-        function renderLogin() {
-            app.innerHTML = `
-      <div class="login-screen">
-        <div class="brand-icon">${icoList}</div>
-        <h1 class="brand-title">MinhaLista</h1>
-        <p class="brand-sub">Organize o dia da sua equipe com clareza</p>
-        <div class="login-card">
-          <label class="field-label">Usuário</label>
-          <input class="field-input" id="loginUser" placeholder="Digite seu usuário" autocomplete="off" />
-          <label class="field-label">Senha</label>
-          <input class="field-input" id="loginPass" type="password" placeholder="Digite sua senha" />
-          <div class="error-msg">${state.loginError}</div>
-          <button class="btn-primary" id="btnEntrar">Entrar</button>
-          <button class="link-btn" id="btnCriarConta">Criar conta</button>
-        </div>
-        <div class="hint-box">Acesso de teste<br/>Usuário: <b>joao</b> &nbsp;|&nbsp; Senha: <b>1234</b></div>
-      </div>
-    `;
-            document.getElementById('btnEntrar').onclick = doLogin;
-            document.getElementById('btnCriarConta').onclick = () => {
-                state.screen = 'register';
-                state.regError = '';
-                render();
-            };
-            const passEl = document.getElementById('loginPass');
-            passEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-        }
-
-
-
-        function doLogin() {
-            const u = document.getElementById('loginUser').value.trim().toLowerCase();
-            const p = document.getElementById('loginPass').value;
-            const found = state.users.find(x => x.username.toLowerCase() === u && x.password === p);
-            if (!found) {
-                state.loginError = 'Usuário ou senha inválidos.';
-                render();
-                return;
-            }
-            state.currentUser = found;
-            state.loginError = '';
-            state.screen = 'tasks';
-            render();
-        }
-
-        function renderRegister() {
-            app.innerHTML = `
-      <div class="login-screen">
-        <div class="brand-icon">${icoList}</div>
-        <h1 class="brand-title">Criar conta</h1>
-        <p class="brand-sub">Junte-se à sua equipe no MinhaLista</p>
-        <div class="login-card">
-          <label class="field-label">Seu nome</label>
-          <input class="field-input" id="regName" placeholder="Nome" />
-          <label class="field-label">Usuário</label>
-          <input class="field-input" id="regUser" placeholder="Escolha um usuário" autocomplete="off" />
-          <label class="field-label">Senha</label>
-          <input class="field-input" id="regPass" type="password" placeholder="Crie uma senha" />
-          <div class="error-msg">${state.regError}</div>
-          <button class="btn-primary" id="btnCadastrar">Cadastrar</button>
-          <button class="link-btn" id="btnVoltarLogin">Já tenho conta</button>
-        </div>
-      </div>
-    `;
-            document.getElementById('btnVoltarLogin').onclick = () => {
-                state.screen = 'login';
-                state.loginError = '';
-                render();
-            };
-            document.getElementById('btnCadastrar').onclick = doRegister;
-        }
-
-        async function doRegister() {
-            const name = document.getElementById('regName').value.trim();
-            const user = document.getElementById('regUser').value.trim().toLowerCase();
-            const pass = document.getElementById('regPass').value;
-            if (!name || !user || !pass) {
-                state.regError = 'Preencha todos os campos.';
-                render();
-                return;
-            }
-            if (state.users.find(x => x.username.toLowerCase() === user)) {
-                state.regError = 'Esse usuário já existe.';
-                render();
-                return;
-            }
-            const newUser = { username: user, password: pass, name };
-            state.users.push(newUser);
-            await set('users', state.users, true);
-            state.currentUser = newUser;
-            state.screen = 'tasks';
-            render();
-        }
-
-        function priorityClass(p) { return 'priority-' + p; }
-
-        function nextPriority(p) {
-            if (p === 'baixa') return 'média';
-            if (p === 'média') return 'alta';
-            return 'baixa';
+            renderTasks();
         }
 
         function renderTasks() {
             const tasks = state.tasks.slice().sort((a, b) => a.order - b.order);
-            const pendentes = tasks.filter(t => !t.completed).length;
-            const concluidas = tasks.filter(t => t.completed).length;
+            const pendentes = tasks.filter(t => !t.completed);
+            const concluidas = tasks.filter(t => t.completed);
+            const atLimit = tasks.length >= MAX_TASKS;
 
             app.innerHTML = `
       <div class="task-screen">
@@ -193,14 +84,12 @@
             <div>
               <div class="header-date">${todayLabel()}</div>
               <div class="header-title">Minhas Tarefas</div>
-              <div class="header-greet"></div>
             </div>
-            <button class="logout-btn" id="btnLogout" title="Sair">${icoLogout}</button>
           </div>
           <div class="stats-row">
-            <div class="stat-card"><div class="stat-num">${pendentes}</div><div class="stat-label">Pendentes</div></div>
-            <div class="stat-card"><div class="stat-num">${concluidas}</div><div class="stat-label">Concluídas</div></div>
-            <div class="stat-card"><div class="stat-num">${tasks.length}</div><div class="stat-label">Total</div></div>
+            <div class="stat-card"><div class="stat-num">${pendentes.length}</div><div class="stat-label">Pendentes</div></div>
+            <div class="stat-card"><div class="stat-num">${concluidas.length}</div><div class="stat-label">Concluídas</div></div>
+            <div class="stat-card"><div class="stat-num">${tasks.length}/${MAX_TASKS}</div><div class="stat-label">Total</div></div>
           </div>
         </div>
 
@@ -209,41 +98,58 @@
             <div class="section-label">A FAZER</div>
             <div class="section-hint">Arraste para reordenar</div>
           </div>
-          <div class="task-list" id="taskList">
-            ${tasks.length ? tasks.filter(t => !t.completed).map(taskCardHtml).join('') : `<div class="empty-state">Nenhuma tarefa ainda.<br/>Toque em "Nova tarefa" para começar.</div>`}
+          <div class="task-list" id="taskListPending">
+            ${pendentes.length ? pendentes.map(taskCardHtml).join('') : `<div class="empty-state">Nenhuma tarefa pendente.<br/>Toque em "Nova tarefa" para começar.</div>`}
           </div>
+
           <div class="fab-wrap">
-            <button class="fab-btn" id="btnNovaTarefa">${icoPlus} Nova tarefa</button>
+            ${atLimit ? `<div class="limit-msg">Limite de ${MAX_TASKS} tarefas atingido. Exclua alguma para adicionar outra.</div>` : ''}
+            <button class="fab-btn${atLimit ? ' disabled' : ''}" id="btnNovaTarefa" ${atLimit ? 'disabled' : ''}>${icoPlus} Nova tarefa</button>
           </div>
-          <div class="task-list" id="taskList">
-            ${tasks.length ? tasks.filter(t => t.completed).map(taskCardHtml).join('') : `<div class="empty-state">Nenhuma tarefa ainda.<br/>Toque em "Nova tarefa" para começar.</div>`}
+
+          ${concluidas.length ? `
+          <div class="section-row" style="margin-top:20px;">
+            <div class="section-label">CONCLUÍDAS</div>
           </div>
+          <div class="task-list" id="taskListDone">
+            ${concluidas.map(taskCardHtml).join('')}
+          </div>` : ''}
         </div>
 
         <div class="toast" id="toast"></div>
         ${state.showModal ? modalHtml() : ''}
+        ${state.confirmDeleteId ? confirmDeleteHtml() : ''}
+        ${state.confirmCompleteId ? confirmCompleteHtml() : ''}
       </div>
     `;
 
-    document.getElementById('btnLogout').onclick = ()=>{
-      state.currentUser = null;
-      state.screen = 'login';
-      render();
-    };
-    document.getElementById('btnNovaTarefa').onclick = ()=>{ state.showModal = true; render(); };
+    if(!atLimit){
+      document.getElementById('btnNovaTarefa').onclick = ()=>{ state.showModal = true; state.addError=''; render(); };
+    }
 
     // task interactions
     tasks.forEach(t=>{
       const card = document.getElementById('card-'+t.id);
       if(!card) return;
-      card.querySelector('.checkbox').onclick = ()=> toggleComplete(t.id);
-      card.querySelector('.delete-btn').onclick = ()=> deleteTask(t.id);
-      const info = card.querySelector('.task-info');
-      info.addEventListener('pointerdown', (e)=> startDrag(e, t.id));
+      card.querySelector('.checkbox').onclick = ()=> onCheckboxClick(t.id);
+      card.querySelector('.delete-btn').onclick = ()=> {
+        state.confirmDeleteId = t.id;
+        render();
+      };
+      if(!t.completed){
+        const info = card.querySelector('.task-info');
+        info.addEventListener('pointerdown', (e)=> startDrag(e, t.id));
+      }
     });
 
     if(state.showModal){
       wireModal();
+    }
+    if(state.confirmDeleteId){
+      wireConfirmDelete();
+    }
+    if(state.confirmCompleteId){
+      wireConfirmComplete();
     }
   }
 
@@ -255,10 +161,10 @@
         </div>
         <div class="task-info">
           <p class="task-title">${escapeHtml(t.title)}</p>
-          <span class="task-time">${t.completed? escapeHtml(t.time||'' ): ''}</span>
+          <span class="task-time">${t.completed? 'Concluída às '+escapeHtml(t.time||'' ): ''}</span>
         </div>
         <div class = "task-actions">
-        <button class="delete-btn">${icoTrash}</button>
+        <button class="delete-btn" title="Excluir tarefa">${icoTrash}</button>
         </div>
       </div>
     `;
@@ -272,25 +178,38 @@
     await set('tasks', state.tasks, true);
   }
 
-  function toggleComplete(id){
+  function onCheckboxClick(id){
     const t = state.tasks.find(x=>x.id===id);
-    t.completed = !t.completed;
+    if(!t) return;
     if(t.completed){
-        const hora = new Date();
-        t.time = hora.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      // desmarcar não precisa de confirmação
+      t.completed = false;
+      t.time = '';
+      persistTasks();
+      render();
+      return;
     }
-    persistTasks();
+    // concluir precisa de confirmação
+    state.confirmCompleteId = id;
     render();
   }
-  function cyclePriority(id){
+
+  function completeTask(id){
     const t = state.tasks.find(x=>x.id===id);
-    t.priority = nextPriority(t.priority);
+    if(!t) return;
+    t.completed = true;
+    const hora = new Date();
+    t.time = hora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    state.confirmCompleteId = null;
     persistTasks();
     render();
+    showToast('Tarefa concluída');
   }
+
   function deleteTask(id){
     state.tasks = state.tasks.filter(x=>x.id!==id);
     state.tasks.forEach((t,i)=>t.order=i);
+    state.confirmDeleteId = null;
     persistTasks();
     render();
     showToast('Tarefa removida');
@@ -310,8 +229,8 @@
 
   function startDrag(e, id){
     e.preventDefault();
-    const list = document.getElementById('taskList');
     const card = document.getElementById('card-'+id);
+    const list = card.closest('.task-list');
     const rect = card.getBoundingClientRect();
 
     const ghost = card.cloneNode(true);
@@ -340,11 +259,19 @@
   function onDragMove(e){
     if(!drag) return;
 
-    // keep the ghost fully inside the viewport vertically
+    // mantém o card fantasma sempre dentro da viewport (nunca "sai" da tela)
     const gh = drag.ghost.getBoundingClientRect();
     let top = e.clientY - drag.grabOffsetY;
     top = Math.max(8, Math.min(window.innerHeight - gh.height - 8, top));
     drag.ghost.style.top = top + 'px';
+
+    // auto-scroll ao arrastar perto do topo/fundo (facilita no celular)
+    const edge = 70;
+    if (e.clientY < edge) {
+        window.scrollBy(0, -12);
+    } else if (e.clientY > window.innerHeight - edge) {
+        window.scrollBy(0, 12);
+    }
 
     // figure out which slot we're hovering over, based on the real (non-ghost) cards
     const cards = Array.from(drag.list.querySelectorAll('.task-card'));
@@ -371,7 +298,13 @@
 
   function onDragEnd(){
     if(!drag) return;
-    drag.order.forEach((id,i)=>{
+
+    // pega a ordem das tarefas pendentes conforme ficou na tela
+    const pendingOrder = drag.order;
+    const doneIds = state.tasks.filter(t=>t.completed).map(t=>t.id);
+
+    // pendentes primeiro (na nova ordem), concluídas depois (mantendo a ordem entre elas)
+    [...pendingOrder, ...doneIds].forEach((id,i)=>{
       const t = state.tasks.find(x=>x.id===id);
       if(t) t.order = i;
     });
@@ -389,14 +322,15 @@
     drag = null;
   }
 
-  // ---------- modal ----------
+  // ---------- add task modal ----------
   function modalHtml(){
     return `
       <div class="modal-overlay" id="modalOverlay">
         <div class="modal-sheet">
           <h3 class="modal-title">Nova tarefa</h3>
           <label class="field-label">Título</label>
-          <input class="field-input" id="newTitle" placeholder="Ex: Organizar prateleiras" />
+          <input class="field-input" id="newTitle" placeholder="Ex: Organizar prateleiras" maxlength="80" />
+          <div class="error-msg">${state.addError}</div>
           <div class="modal-actions">
             <button class="btn-secondary" id="btnCancelar">Cancelar</button>
             <button class="btn-primary" id="btnSalvarTarefa">Adicionar tarefa</button>
@@ -412,22 +346,95 @@
     });
     document.getElementById('btnCancelar').onclick = ()=>{ state.showModal=false; render(); };
     document.getElementById('btnSalvarTarefa').onclick = addTask;
-      const newTitle = document.getElementById('newTitle');
-      newTitle.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+    const newTitle = document.getElementById('newTitle');
+    newTitle.focus();
+    // capitaliza a primeira letra automaticamente enquanto o usuário digita
+    newTitle.addEventListener('input', () => {
+        const start = newTitle.selectionStart;
+        const end = newTitle.selectionEnd;
+        const v = newTitle.value;
+        newTitle.value = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+        newTitle.setSelectionRange(start, end);
+    });
+    newTitle.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
   }
 
   async function addTask(){
+    if(state.tasks.length >= MAX_TASKS){
+      state.addError = `Limite de ${MAX_TASKS} tarefas atingido.`;
+      render();
+      return;
+    }
     let title = document.getElementById('newTitle').value.trim();
-    if(!title) return;
-      title = title.substring(0, 1).toUpperCase()+title.substring(1)
+    if(!title){
+      state.addError = 'Digite um título para a tarefa.';
+      render();
+      return;
+    }
+    title = title.substring(0, 1).toUpperCase()+title.substring(1);
     state.tasks.push({
-      id: cryptoId(), title,
+      id: cryptoId(), title, time: '',
       completed:false, order: state.tasks.length
     });
     state.showModal = false;
+    state.addError = '';
     await persistTasks();
     render();
     showToast('Tarefa adicionada');
+  }
+
+  // ---------- delete confirmation modal ----------
+  function confirmDeleteHtml(){
+    const t = state.tasks.find(x=>x.id===state.confirmDeleteId);
+    const title = t ? escapeHtml(t.title) : 'esta tarefa';
+    return `
+      <div class="modal-overlay" id="confirmOverlay">
+        <div class="modal-sheet confirm-sheet">
+          <div class="confirm-icon">${icoAlert}</div>
+          <h3 class="modal-title" style="text-align:center;">Excluir tarefa?</h3>
+          <p class="confirm-text">Tem certeza que deseja excluir "<b>${title}</b>"? Essa ação não pode ser desfeita.</p>
+          <div class="modal-actions">
+            <button class="btn-secondary" id="btnCancelDelete">Cancelar</button>
+            <button class="btn-danger" id="btnConfirmDelete">Excluir</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireConfirmDelete(){
+    document.getElementById('confirmOverlay').addEventListener('click', (e)=>{
+      if(e.target.id === 'confirmOverlay'){ state.confirmDeleteId=null; render(); }
+    });
+    document.getElementById('btnCancelDelete').onclick = ()=>{ state.confirmDeleteId=null; render(); };
+    document.getElementById('btnConfirmDelete').onclick = ()=> deleteTask(state.confirmDeleteId);
+  }
+
+  // ---------- complete confirmation modal ----------
+  function confirmCompleteHtml(){
+    const t = state.tasks.find(x=>x.id===state.confirmCompleteId);
+    const title = t ? escapeHtml(t.title) : 'esta tarefa';
+    return `
+      <div class="modal-overlay" id="confirmCompleteOverlay">
+        <div class="modal-sheet confirm-sheet">
+          <div class="confirm-icon success">${icoCheckCircle}</div>
+          <h3 class="modal-title" style="text-align:center;">Concluir tarefa?</h3>
+          <p class="confirm-text">Marcar "<b>${title}</b>" como concluída?</p>
+          <div class="modal-actions">
+            <button class="btn-secondary" id="btnCancelComplete">Cancelar</button>
+            <button class="btn-success" id="btnConfirmComplete">Concluir</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireConfirmComplete(){
+    document.getElementById('confirmCompleteOverlay').addEventListener('click', (e)=>{
+      if(e.target.id === 'confirmCompleteOverlay'){ state.confirmCompleteId=null; render(); }
+    });
+    document.getElementById('btnCancelComplete').onclick = ()=>{ state.confirmCompleteId=null; render(); };
+    document.getElementById('btnConfirmComplete').onclick = ()=> completeTask(state.confirmCompleteId);
   }
 
   init();
