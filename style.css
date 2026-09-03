@@ -11,12 +11,6 @@
     --border: #E1E9FB;
     --success: #16A34A;
     --danger: #DC2626;
-    --baixa-bg: #DCFCE7;
-    --baixa-text: #166534;
-    --media-bg: #FEF3C7;
-    --media-text: #92400E;
-    --alta-bg: #FEE2E2;
-    --alta-text: #B91C1C;
 }
 
 * {
@@ -47,19 +41,6 @@ body {
 }
 
 
-/* ---------- LOGIN ---------- */
-
-.login-screen {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 32px 24px;
-    gap: 6px;
-    animation: fadeIn .4s ease;
-}
-
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -69,41 +50,6 @@ body {
         opacity: 1;
         transform: none;
     }
-}
-
-.brand-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, #5B8DFF, var(--primary));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 10px 24px -8px rgba(59, 110, 246, .55);
-    margin-bottom: 14px;
-}
-
-.brand-title {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 700;
-    font-size: 26px;
-    color: var(--title);
-    margin: 0;
-}
-
-.brand-sub {
-    color: var(--subtitle);
-    font-size: 13.5px;
-    margin: 2px 0 24px;
-    font-weight: 500;
-}
-
-.login-card {
-    width: 100%;
-    background: var(--card);
-    border-radius: 22px;
-    padding: 26px 22px 22px;
-    box-shadow: 0 18px 40px -18px rgba(40, 70, 160, .25);
 }
 
 .field-label {
@@ -151,34 +97,6 @@ body {
     transform: scale(.98);
 }
 
-.link-btn {
-    display: block;
-    width: 100%;
-    text-align: center;
-    background: none;
-    border: none;
-    color: var(--primary);
-    font-weight: 600;
-    font-size: 14px;
-    margin-top: 16px;
-    cursor: pointer;
-}
-
-.hint-box {
-    margin-top: 20px;
-    width: 100%;
-    background: #E9F0FF;
-    border-radius: 14px;
-    padding: 12px;
-    text-align: center;
-    color: var(--primary-dark);
-    font-size: 12.5px;
-}
-
-.hint-box b {
-    color: var(--title);
-}
-
 .error-msg {
     color: var(--danger);
     font-size: 13px;
@@ -223,24 +141,6 @@ body {
     font-size: 24px;
     font-weight: 700;
     margin: 4px 0 2px;
-}
-
-.header-greet {
-    font-size: 13.5px;
-    opacity: .9;
-}
-
-.logout-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, .22);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: #fff;
 }
 
 .stats-row {
@@ -369,6 +269,19 @@ body {
     min-width: 0;
 }
 
+/* somente tarefas pendentes são arrastáveis: evita conflito com o scroll no celular */
+.task-card:not(.completed) .task-info {
+    touch-action: none;
+}
+
+.task-card.completed {
+    cursor: default;
+}
+
+.task-card.completed .task-info {
+    cursor: default;
+}
+
 .task-title {
     font-weight: 600;
     font-size: 14.5px;
@@ -438,6 +351,20 @@ body {
     box-shadow: 0 14px 24px -10px rgba(44, 87, 214, .55);
 }
 
+.fab-btn.disabled {
+    background: #C4D0EE;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.limit-msg {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+    margin-bottom: 10px;
+    padding: 0 10px;
+}
+
 
 /* ---------- DRAG GHOST (fixed to viewport, never clipped) ---------- */
 
@@ -486,27 +413,6 @@ body {
     margin: 0 0 16px;
 }
 
-.modal-row {
-    display: flex;
-    gap: 10px;
-}
-
-.modal-row .field-input {
-    margin-bottom: 16px;
-}
-
-.select-input {
-    width: 100%;
-    padding: 13px 14px;
-    border-radius: 12px;
-    border: 1.5px solid var(--border);
-    background: #F5F8FF;
-    font-size: 14.5px;
-    font-family: 'Inter', sans-serif;
-    color: var(--text);
-    margin-bottom: 16px;
-}
-
 .modal-actions {
     display: flex;
     gap: 10px;
@@ -527,6 +433,74 @@ body {
 
 .modal-actions .btn-primary {
     flex: 1.4;
+}
+
+.btn-danger {
+    flex: 1.4;
+    padding: 13px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #F1685E, var(--danger));
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    cursor: pointer;
+    box-shadow: 0 12px 22px -10px rgba(220, 38, 38, .45);
+    transition: transform .12s ease;
+}
+
+.btn-danger:active {
+    transform: scale(.98);
+}
+
+.btn-success {
+    flex: 1.4;
+    padding: 13px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #34D399, var(--success));
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    cursor: pointer;
+    box-shadow: 0 12px 22px -10px rgba(22, 163, 74, .45);
+    transition: transform .12s ease;
+}
+
+.btn-success:active {
+    transform: scale(.98);
+}
+
+.confirm-sheet {
+    text-align: center;
+}
+
+.confirm-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F1685E, var(--danger));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+}
+
+.confirm-icon.success {
+    background: linear-gradient(135deg, #34D399, var(--success));
+}
+
+.confirm-text {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 20px;
+}
+
+.confirm-text b {
+    color: var(--text);
 }
 
 .toast {
